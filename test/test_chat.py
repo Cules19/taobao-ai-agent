@@ -1,4 +1,5 @@
 from unittest.mock import Mock
+from uuid import UUID
 
 from fastapi.testclient import TestClient
 
@@ -7,15 +8,25 @@ import main
 client = TestClient(main.app)
 
 
+def test_ui_page_and_static_assets_are_served():
+    page = client.get("/")
+    assert page.status_code == 200
+    assert "导购对话" in page.text
+    assert client.get("/assets/chat.js").status_code == 200
+    assert client.get("/assets/styles.css").status_code == 200
+
+
 def test_chat_returns_reply(monkeypatch):
-    fake_ask_model = Mock(return_value="你好，想找什么商品？")
-    monkeypatch.setattr(main.model_client, "ask_model", fake_ask_model)
+    fake_run_turn = Mock(return_value={"reply": "你好，想找什么商品？",
+                                       "products": [], "favorite_ids": []})
+    monkeypatch.setattr(main.agent, "run_turn", fake_run_turn)
 
     response = client.post("/chat", json={"message": " 你好 "})
 
     assert response.status_code == 200
-    assert response.json() == {"reply": "你好，想找什么商品？"}
-    fake_ask_model.assert_called_once_with("你好")
+    assert response.json()["reply"] == "你好，想找什么商品？"
+    assert UUID(response.json()["session_id"]).version == 4
+    assert fake_run_turn.call_args.args[0] == "你好"
 
 
 def test_chat_rejects_blank_message():
@@ -25,8 +36,8 @@ def test_chat_rejects_blank_message():
 
 
 def test_chat_handles_model_error(monkeypatch):
-    fake_ask_model = Mock(side_effect=RuntimeError("配置缺失"))
-    monkeypatch.setattr(main.model_client, "ask_model", fake_ask_model)
+    fake_run_turn = Mock(side_effect=RuntimeError("配置缺失"))
+    monkeypatch.setattr(main.agent, "run_turn", fake_run_turn)
 
     response = client.post("/chat", json={"message": "你好"})
 

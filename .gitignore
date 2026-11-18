@@ -1,5 +1,6 @@
 # ========== 通用 Python ==========
 .env
+.pytest_cache/
 .venv
 venv/
 env/
