@@ -1,0 +1,5 @@
+[
+  {"order_id":"DEMO1001","items":["P102"],"status":"运输中","tracking":[{"time":"2026-11-16 09:10","event":"杭州仓库已发货"},{"time":"2026-11-17 07:25","event":"到达上海分拨中心"}]},
+  {"order_id":"DEMO1002","items":["P201","P301"],"status":"已签收","tracking":[{"time":"2026-11-14 15:30","event":"南京仓库已发货"},{"time":"2026-11-16 12:06","event":"包裹已签收"}]},
+  {"order_id":"DEMO1003","items":["P402"],"status":"待发货","tracking":[]}
+]

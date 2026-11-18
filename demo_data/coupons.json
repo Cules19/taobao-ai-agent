@@ -1,0 +1,7 @@
+[
+  {"id":"C01","name":"全场满 199 减 20","category":"全场","min_spend":199,"discount":20,"active":true,"rule":"单笔满额可用，不可叠加。"},
+  {"id":"C02","name":"耳机满 150 减 15","category":"耳机","min_spend":150,"discount":15,"active":true,"rule":"仅适用耳机类目，不可叠加。"},
+  {"id":"C03","name":"背包满 200 减 25","category":"背包","min_spend":200,"discount":25,"active":true,"rule":"仅适用背包类目。"},
+  {"id":"C04","name":"水杯满 80 减 8","category":"水杯","min_spend":80,"discount":8,"active":true,"rule":"仅适用水杯类目。"},
+  {"id":"C05","name":"键盘满 300 减 30","category":"键盘","min_spend":300,"discount":30,"active":false,"rule":"活动已结束。"}
+]
