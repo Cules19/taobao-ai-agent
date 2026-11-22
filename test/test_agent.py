@@ -4,7 +4,6 @@ import logging
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from openai import OpenAI
 
 import agent
 import main
@@ -44,14 +43,39 @@ def provider(monkeypatch):
 
         def new_client():
             transport = httpx.MockTransport(respond)
-            return OpenAI(api_key="test-only", base_url="https://api.deepseek.com",
-                          http_client=httpx.Client(transport=transport)), "test-model"
+            return original(httpx.Client(transport=transport))
 
+        original = model_client.create_chat_model
         monkeypatch.setenv("OPENAI_BASE_URL", "https://api.deepseek.com")
-        monkeypatch.setattr(model_client, "create_model_client", new_client)
+        monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+        monkeypatch.setenv("OPENAI_MODEL", "test-model")
+        monkeypatch.setattr(model_client, "create_chat_model", new_client)
         return requests
 
     return install
+
+
+def test_default_model_transport_survives_two_chat_turns(monkeypatch):
+    monkeypatch.setenv("OPENAI_BASE_URL", "https://shared-client.example.test/v1")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-only")
+    monkeypatch.setenv("OPENAI_MODEL", "test-model")
+    monkeypatch.delenv("OPENAI_PROXY", raising=False)
+    requests = []
+
+    def respond(transport, request):
+        requests.append(json.loads(request.content)["messages"])
+        reply = {"role": "assistant", "content": "你好。"}
+        return httpx.Response(200, json=completion(reply))
+
+    monkeypatch.setattr(httpx.HTTPTransport, "handle_request", respond)
+    with TestClient(main.app) as client:
+        first = client.post("/chat", json={"message": "你好"})
+        assert first.status_code == 200, first.text
+        second = client.post("/chat", json={"message": "水杯", "session_id": first.json()["session_id"]})
+
+    assert second.status_code == 200, second.text
+    assert len(requests) == 2
+    assert [message["content"] for message in requests[1][-3:]] == ["你好", "你好。", "水杯"]
 
 
 def test_sdk_tool_round_trip_and_session_history(provider):
@@ -79,7 +103,8 @@ def test_sdk_tool_round_trip_and_session_history(provider):
     assert requests[0]["thinking"] == {"type": "disabled"}
     assert requests[0]["tool_choice"] == "auto"
     assert {tool["function"]["name"] for tool in requests[0]["tools"]} == {
-        "search_products", "get_product_detail", "list_coupons", "query_order", "manage_favorites"}
+        "search_products", "get_product_detail", "list_coupons", "query_order", "manage_favorites",
+        "retrieve_knowledge"}
     second = client.post("/chat", json={"message": "第一款还有什么颜色？",
                                        "session_id": first.json()["session_id"]})
     assert second.json()["session_id"] == first.json()["session_id"]
@@ -123,6 +148,29 @@ def test_loop_limit_does_not_commit_partial_turn(provider):
     assert agent.run_turn("收藏 P102", session)["reply"] == agent.LIMIT_REPLY
     assert len(requests) == agent.MAX_MODEL_REQUESTS
     assert not session.turns and not session.favorites
+
+
+def test_limit_leaves_existing_history_and_favorites_unchanged(provider):
+    done = {"role": "assistant", "content": "你好"}
+    repeated = [call("manage_favorites", {"action": "add", "product_id": "P102"},
+                     f"limited_{index}") for index in range(agent.MAX_MODEL_REQUESTS)]
+    provider(done, *repeated)
+    client = TestClient(main.app)
+    start = client.post("/chat", json={"message": "你好"}).json()
+    key = start["session_id"]
+    before = client.get("/api/conversations/" + key).json()
+    limited = client.post("/chat", json={"session_id": key, "message": "收藏 P102"}).json()
+    assert limited["turn_status"] == "limited"
+    assert client.get("/api/conversations/" + key).json() == before
+
+
+def test_deadline_skips_model_and_does_not_persist(provider, monkeypatch):
+    requests = provider()
+    monkeypatch.setattr(agent, "TURN_SECONDS", 0)
+    client = TestClient(main.app)
+    assert client.post("/chat", json={"message": "找耳机"}).json()["turn_status"] == "limited"
+    assert not requests
+    assert client.get("/api/conversations").json()["items"] == []
 
 
 def test_provider_error_does_not_leak_error_body(provider):

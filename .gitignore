@@ -1,6 +1,11 @@
 # ========== 通用 Python ==========
 .env
 .pytest_cache/
+.shop-state/
+evaluation-offline.json
+evaluation-live.json
+.env.*
+!.env.example
 .venv
 venv/
 env/

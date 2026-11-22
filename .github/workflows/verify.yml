@@ -1,0 +1,45 @@
+name: Verify
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: requirements-prod.txt
+      - run: python -m pip install -r requirements-prod.txt 'pytest>=8,<10'
+      - run: python -m pip check
+      - run: python -m pytest -q
+      - run: python -m evaluate --mode offline
+      - run: node --check web/assets/chat.js
+      - name: Build and smoke test the release
+        env:
+          SHOP_DOMAIN: shop.example.test
+          SHOP_SESSION_SECRET: ci-only-placeholder-at-least-32-bytes
+          SHOP_ACCESS_USER: reviewer
+          OPENAI_API_KEY: ci-test-only
+          OPENAI_MODEL: deepseek-flash
+          OPENAI_BASE_URL: https://api.deepseek.com
+        run: |
+          export SHOP_ACCESS_PASSWORD_HASH="$(docker run --rm caddy:2-alpine caddy hash-password --plaintext ci-test-only)"
+          docker compose config --quiet
+          docker compose run --rm --no-deps edge caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+          docker compose up -d --build --wait --wait-timeout 90 app
+          docker compose exec -T app python -c "from urllib.request import urlopen; assert urlopen('http://127.0.0.1:8000/').status == 200"
+          docker compose exec -T app python -c "import knowledge_index as kb; from evaluate import FixtureEmbeddings; kb.build_index(kb.index_path(), FixtureEmbeddings())"
+          docker compose exec -T app python -c "import json; from urllib.request import urlopen; payload=json.load(urlopen('http://127.0.0.1:8000/api/knowledge/status')); assert payload['status']=='indexed' and payload['documents']>=20"
+      - if: failure()
+        env:
+          SHOP_DOMAIN: shop.example.test
+          SHOP_SESSION_SECRET: ci-only-placeholder-at-least-32-bytes
+          SHOP_ACCESS_USER: reviewer
+          SHOP_ACCESS_PASSWORD_HASH: unused
+          OPENAI_API_KEY: ci-test-only
+          OPENAI_MODEL: deepseek-flash
+          OPENAI_BASE_URL: https://api.deepseek.com
+        run: docker compose logs --tail=100

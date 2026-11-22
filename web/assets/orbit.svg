@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 300" fill="none">
+<defs><linearGradient id="bag" x1="98" y1="82" x2="240" y2="252" gradientUnits="userSpaceOnUse"><stop stop-color="#ffbd91"/><stop offset="1" stop-color="#b9432d"/></linearGradient><linearGradient id="side" x1="180" y1="140" x2="280" y2="250" gradientUnits="userSpaceOnUse"><stop stop-color="#d46d4c"/><stop offset="1" stop-color="#8c392e"/></linearGradient><radialGradient id="light"><stop stop-color="#ffb28c" stop-opacity=".37"/><stop offset="1" stop-color="#ffb28c" stop-opacity="0"/></radialGradient></defs>
+<circle cx="186" cy="148" r="148" fill="url(#light)"/>
+<ellipse cx="181" cy="151" rx="158" ry="72" transform="rotate(-24 181 151)" stroke="#edc0a2" stroke-opacity=".44"/>
+<ellipse cx="174" cy="148" rx="147" ry="50" transform="rotate(19 174 148)" stroke="#edc0a2" stroke-opacity=".26"/>
+<ellipse cx="190" cy="253" rx="77" ry="13" fill="#180f18" fill-opacity=".38"/>
+<path d="M100 121 222 95l57 25-112 32z" fill="#f7a77d"/>
+<path d="m222 95 57 25-11 111-41 20z" fill="url(#side)"/>
+<path d="m100 121 122-26 5 156-128-1z" fill="url(#bag)"/>
+<path d="M133 136l2-44c2-49 61-63 64-6l1 35" stroke="#642f32" stroke-width="9" stroke-linecap="round"/>
+<path d="M133 132l2-42c2-47 60-63 64-6l1 35" stroke="#ffdbc1" stroke-width="5" stroke-linecap="round"/>
+<path d="m145 186 19 15 33-44" stroke="#fff3e6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+<circle cx="301" cy="83" r="7" fill="#ffe0af"/><circle cx="59" cy="188" r="4" fill="#f8ae8c"/>
+<path d="M65 60v25M53 72h24M302 184v32m-16-16h32" stroke="#ffdfbc" stroke-width="2" stroke-linecap="round"/>
+</svg>

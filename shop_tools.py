@@ -4,8 +4,10 @@ from time import perf_counter
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from langchain_core.tools import StructuredTool
 
 import catalog
+import knowledge_index
 
 logger = logging.getLogger("uvicorn.error.shop_tools")
 
@@ -46,6 +48,10 @@ class FavoriteArguments(ToolArguments):
     product_id: ProductId | None = None
 
 
+class KnowledgeArguments(ToolArguments):
+    query: str = Field(min_length=2, max_length=500, description="简短中文知识查询，不包含个人信息或订单号")
+
+
 TOOL_REGISTRY = {
     "search_products": (SearchArguments, catalog.search_products,
                         "搜索模拟商品，按类目、关键词、标签、预算过滤，可按价格、销量、好评率排序。"),
@@ -59,11 +65,24 @@ TOOL_REGISTRY = {
                          "用户明确要求收藏时用 add 和商品编号；查看当前会话收藏时用 list。"),
 }
 
-TOOLS = [
-    {"type": "function", "function": {"name": name, "description": description,
-     "parameters": schema.model_json_schema()}}
-    for name, (schema, function, description) in TOOL_REGISTRY.items()
-]
+KNOWLEDGE_TOOL = "retrieve_knowledge"
+
+
+def make_tools(favorites):
+    """每轮把已有白名单和独立的知识检索注册为 LangChain 工具。"""
+    def business(name, schema, description):
+        def invoke(**kwargs):
+            return execute_tool(name, json.dumps(kwargs, ensure_ascii=False), favorites)
+
+        return StructuredTool.from_function(invoke, name=name, description=description, args_schema=schema)
+
+    tools = {name: business(name, schema, description)
+             for name, (schema, _, description) in TOOL_REGISTRY.items()}
+    tools[KNOWLEDGE_TOOL] = StructuredTool.from_function(
+        knowledge_index.retrieve, name=KNOWLEDGE_TOOL, args_schema=KnowledgeArguments,
+        description="检索选物模拟资料：选购、参数、保养、模拟退换货、优惠规则和物流常识。"
+                    "可和业务工具同轮调用；实时价格、库存、可用券和订单状态必须另查业务工具。")
+    return tools
 
 ARGUMENT_HINTS = {
     "search_products": "请确认要找的商品、预算区间或排序方式。",

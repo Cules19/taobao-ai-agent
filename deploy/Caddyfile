@@ -1,0 +1,26 @@
+{
+    servers {
+        timeouts {
+            read_header 10s
+            read_body 15s
+            idle 60s
+        }
+    }
+}
+
+{$SHOP_DOMAIN} {
+    encode zstd gzip
+    header Strict-Transport-Security "max-age=31536000"
+    basic_auth {
+        {$SHOP_ACCESS_USER} {$SHOP_ACCESS_PASSWORD_HASH}
+    }
+    request_body {
+        max_size 16384
+    }
+    reverse_proxy app:8000 {
+        header_up -Authorization
+        transport http {
+            response_header_timeout 120s
+        }
+    }
+}

@@ -1,0 +1,54 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    environment:
+      SHOP_ENV: production
+      SHOP_PUBLIC_ORIGIN: https://${SHOP_DOMAIN:?set SHOP_DOMAIN}
+      SHOP_SESSION_SECRET: ${SHOP_SESSION_SECRET:?set SHOP_SESSION_SECRET}
+      SHOP_DB_PATH: /state/store.sqlite3
+      SHOP_VISITOR_LIMIT: ${SHOP_VISITOR_LIMIT:-12}
+      SHOP_SITE_LIMIT: ${SHOP_SITE_LIMIT:-120}
+      SHOP_DAILY_LIMIT: ${SHOP_DAILY_LIMIT:-600}
+      SHOP_RETENTION_DAYS: ${SHOP_RETENTION_DAYS:-7}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:?set OPENAI_MODEL}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:?set OPENAI_BASE_URL}
+      SHOP_KB_MIN_SCORE: ${SHOP_KB_MIN_SCORE:-0.65}
+      SHOP_LANGSMITH_TRACING: ${SHOP_LANGSMITH_TRACING:-false}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-select-studio}
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}
+      LANGSMITH_WORKSPACE_ID: ${LANGSMITH_WORKSPACE_ID:-}
+    volumes:
+      - state:/state
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 130s
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/readyz', timeout=2).close()"]
+      interval: 20s
+      timeout: 4s
+      retries: 3
+  edge:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SHOP_DOMAIN: ${SHOP_DOMAIN:?set SHOP_DOMAIN}
+      SHOP_ACCESS_USER: ${SHOP_ACCESS_USER:?set SHOP_ACCESS_USER}
+      SHOP_ACCESS_PASSWORD_HASH: ${SHOP_ACCESS_PASSWORD_HASH:?set SHOP_ACCESS_PASSWORD_HASH}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - caddy_config:/config
+volumes:
+  state:
+  certificates:
+  caddy_config:
