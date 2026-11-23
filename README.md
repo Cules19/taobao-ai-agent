@@ -1,6 +1,5 @@
 # 选物 3.0 · AI 购物助手
-
-私有试点版本。LangChain 封装模型与工具，LangGraph 编排原生 Function Calling，RAG 查询本地「选物模拟资料」，LangSmith 追踪默认关闭。对话、收藏和来源快照存储在 SQLite。项目不访问真实淘宝、支付或物流系统。
+LangChain 封装模型与工具，LangGraph 编排原生 Function Calling，RAG 查询本地「选物模拟资料」，LangSmith 追踪默认关闭。对话、收藏和来源快照存储在 SQLite。
 
 ## 在 PyCharm 运行
 
